@@ -176,7 +176,7 @@ class Grid_search:
 
     # FOR RANDOM MAPS    
 
-    def rnd_motion_model(self, curr_pos,heading,d1_open, d2_open, key_hold, action):
+    def rnd_motion_model(self, curr_pos,heading,d1_open, d2_open, key_hold, key_idx,action):
         f_pos = self.front_pos(curr_pos,heading)
         
         if action == 0: # Move Forward
@@ -188,7 +188,7 @@ class Grid_search:
                 return curr_pos,heading,d1_open, d2_open, key_hold
             elif np.array_equal(self.d2_pos,f_pos) and d2_open != 1:
                 return curr_pos,heading,d1_open, d2_open, key_hold
-            elif np.array_equal(self.key_pos,f_pos) and key_hold == 0:
+            elif np.array_equal(self.key_arr[key_idx],f_pos) and key_hold == 0:
                 return curr_pos,heading,d1_open, d2_open, key_hold
             else:
                 return f_pos,heading,d1_open, d2_open, key_hold
@@ -201,7 +201,8 @@ class Grid_search:
             return curr_pos,heading,d1_open, d2_open, key_hold
 
         elif action == 3: # Pickup Key
-            if np.array_equal(self.info["key_pos"],f_pos):  key_hold = 1
+            if np.array_equal(self.key_arr[key_idx],f_pos):  
+                key_hold = 1
             return curr_pos,heading,d1_open, d2_open, key_hold
 
         elif action == 4 : # Unlock Door
@@ -221,7 +222,6 @@ class Grid_search:
             return np.inf
 
         if action == 3 and front_type != "Key" : 
-            # print(f_pos)
             return np.inf
         if action == 4 and front_type != "Door" : 
 
@@ -232,6 +232,7 @@ class Grid_search:
 
         else :
             return 10
+
     # FOR RANDOM MAPS 
     def rnd_door_key(self):
         h = self.info["height"]
@@ -241,17 +242,14 @@ class Grid_search:
         # maximum timesteps = w*h of the grid ( includes wall cells and blocks to compensate for key picking and door opening)
         P = np.full((w,h,4,2,2,2,3,3,w*h),np.inf) 
         for g in range(self.goal_arr.shape[0]): V[self.goal_arr[g,0],self.goal_arr[g,1],...,g]=0
-        # V[self.goal_arr[p][0], self.goal_arr[p][1], ...,p] =0
         term=False
         # count =0
         for t in range(w*h-1 ,-1,-1):
             print("timestep:<=================================> ",t)
             if term == False:
-                # plot_env(self.env)
                 # count =count+1
                 for i in range(0,Q.shape[0]-1): # Grid x
                     for j in range(0,Q.shape[1]-1): # Grid y
-                        # if i == self.goal_pos[0] and j == self.goal_pos[1]: continue
                         if type(self.env.grid.get(i,j)).__name__ == "Wall": continue
                         for k in range(Q.shape[2]):  # heading
                             for l in range(Q.shape[3]): # door 1
@@ -259,15 +257,8 @@ class Grid_search:
                                     for n in range(Q.shape[5]): # key_hold
                                         for o in range(Q.shape[6]): # key_pos
                                             for p in range(Q.shape[7]): # goal pos
-                                                # V[self.goal_arr[p][0], self.goal_arr[p][1], ...,p] =0
-                                                
-                                                # if i == self.goal_arr[p][0] and j == self.goal_arr[p][1]: continue
-
                                                 for q in range(Q.shape[8]): # actions
-                                                    # if i==4 and j ==2 : print(i,j,k,l,m,n,o,p,q)
-                                                    
-                                                    
-                                                    next_pos,next_heading,d1_open,d2_open, key_hold = self.rnd_motion_model(np.array([i,j]),k,l,m,n,q)
+                                                    next_pos,next_heading,d1_open,d2_open, key_hold = self.rnd_motion_model(np.array([i,j]),k,l,m,n,o,q)
                                                     Q[i,j,k,l,m,n,o,p,q] = self.rnd_cost(np.array([i,j]),next_pos,k,n,q,p) + V[next_pos[0],next_pos[1],next_heading,d1_open,d2_open,key_hold,o,p]
                                             # if t== w*h-1 and 
                                             # if l == int(self.d1_open) and m == int(self.d2_open)  and n == int(self.key_hold): print( i,j,k,l,m,n,o,self.goal_pos,"\t",Q[i,j,k,l,m,n,o])
@@ -279,9 +270,32 @@ class Grid_search:
             # print(count)
         np.save("opt_pol.npy",P)
         np.save("opt_cost.npy",V)
+        # done = False
+        # opt_cost= V[self.env.agent_pos[0],self.env.agent_pos[1],self.env.agent_dir,int(self.d1_open),int(self.d2_open),int(self.key_hold),self.key_idx,self.goal_idx]
+        # opt_pol =[]
+        # while not done:
+        #     print("time:",t,self.env.agent_pos[0],self.env.agent_pos[1],self.env.agent_dir,int(self.d1_open),int(self.d2_open),int(self.key_hold))
+        #     # pos,heading, door_open, key_hold = self.motion_model(pos,heading,door_open,key_hold,int(P[self.env.agent_pos[0],self.env.agent_pos[1],self.env.agent_dir,int(self.door_open),int(self.key_hold),t]))
+        #     t =t+1
+        #     opt_pol.append(int(P[self.env.agent_pos[0],self.env.agent_pos[1],self.env.agent_dir,int(self.d1_open),int(self.d2_open),int(self.key_hold),self.key_idx,self.goal_idx,t]))
+        #     _, done = step(self.env, int(P[self.env.agent_pos[0],self.env.agent_pos[1],self.env.agent_dir,int(self.d1_open),int(self.d2_open),int(self.key_hold),self.key_idx,self.goal_idx,t]))
+            
+        #     plot_env(self.env)
+        #     print(opt_pol)
+        #     self.key_hold = self.env.carrying is not None
+        #     self.d1_open = self.door1.is_open
+        #     self.d2_open = self.door2.is_open
+
+        # return opt_pol,opt_cost
+
+    def load_pol(self,pol_file = "opt_pol.npy" , cost_file = "opt_cost.npy"):
+        P = np.load(pol_file)
+        V = np.load(cost_file)
         done = False
         opt_cost= V[self.env.agent_pos[0],self.env.agent_pos[1],self.env.agent_dir,int(self.d1_open),int(self.d2_open),int(self.key_hold),self.key_idx,self.goal_idx]
+        print(opt_cost)
         opt_pol =[]
+        t= 0
         while not done:
             print("time:",t,self.env.agent_pos[0],self.env.agent_pos[1],self.env.agent_dir,int(self.d1_open),int(self.d2_open),int(self.key_hold))
             # pos,heading, door_open, key_hold = self.motion_model(pos,heading,door_open,key_hold,int(P[self.env.agent_pos[0],self.env.agent_pos[1],self.env.agent_dir,int(self.door_open),int(self.key_hold),t]))
@@ -296,29 +310,6 @@ class Grid_search:
             self.d2_open = self.door2.is_open
 
         return opt_pol,opt_cost
-
-    def load_pol(self,pol_file, cost_file):
-        P = np.load("opt_pol.npy")
-        V = np.load("opt_cost.npy")
-        done = False
-        opt_cost= V[self.env.agent_pos[0],self.env.agent_pos[1],self.env.agent_dir,int(self.d1_open),int(self.d2_open),int(self.key_hold),self.key_idx,self.goal_idx]
-        opt_pol =[]
-        t=0
-        while not done:
-            print("time:",t,self.env.agent_pos[0],self.env.agent_pos[1],self.env.agent_dir,int(self.d1_open),int(self.d2_open),int(self.key_hold))
-            # pos,heading, door_open, key_hold = self.motion_model(pos,heading,door_open,key_hold,int(P[self.env.agent_pos[0],self.env.agent_pos[1],self.env.agent_dir,int(self.door_open),int(self.key_hold),t]))
-            t =t+1
-            opt_pol.append(int(P[self.env.agent_pos[0],self.env.agent_pos[1],self.env.agent_dir,int(self.d1_open),int(self.d2_open),int(self.key_hold),self.key_idx,self.goal_idx,t]))
-            _, done = step(self.env, int(P[self.env.agent_pos[0],self.env.agent_pos[1],self.env.agent_dir,int(self.d1_open),int(self.d2_open),int(self.key_hold),self.key_idx,self.goal_idx,t]))
-            
-            plot_env(self.env)
-            print(opt_pol)
-            self.key_hold = self.env.carrying is not None
-            self.d1_open = self.door1.is_open
-            self.d2_open = self.door2.is_open
-
-        return opt_pol,opt_cost
-
 
 
             
@@ -344,10 +335,11 @@ def partB():
     env_folder = './envs/random_envs'
     g = Grid_search(env_folder,rndm=1)
     
-    # seq, cost = g.rnd_door_key()  
-    pol_file = "opt_pol.npy"
-    cost_file = "opt_cost.npy"  
-    seq,cost = g.load_pol(pol_file,cost_file)
+    # seq, cost = 
+    g.rnd_door_key()  
+    # pol_file = "opt_pol.npy"
+    # cost_file = "opt_cost.npy"  
+    seq,cost = g.load_pol()
 
 if __name__ == "__main__":
     # please provide the known map in env_path = './envs/doorkey-8x8-shortcut.env' in partA
