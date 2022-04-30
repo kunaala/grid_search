@@ -1,4 +1,4 @@
-# ECE276B SP21 HW1 Programming Assignment
+# Dynamic programming for Grid Search
 
 ## Overview
 implements dynammic programming for the Door-Key problems.
